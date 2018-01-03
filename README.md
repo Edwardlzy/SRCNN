@@ -1,5 +1,5 @@
 # SRCNN
-Implementation of super-resolution using CNN
+Implementation of super-resolution using CNN.
 
 Usage:
 
