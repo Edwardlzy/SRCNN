@@ -21,7 +21,7 @@ batch_size = 128
 num_training = 21712
 num_testing = 1113
 ckpt_dir = './checkpoint/'
-multiplier = 2
+multiplier = 3
 
 # Read and prepare the test image for SRCNN.
 def prepare_data(path):
@@ -183,7 +183,7 @@ def generate_SR(x, num_ver, num_hor, path, save_path):
 		scipy.misc.imsave('./result/bicubic.png', bicubic)
 
 # Directly feed the original image to SRCNN.
-def enhance(x, path, save_path):
+def enhance(x, path, save_dir):
 	# Initialization.
 	model = SRCNN(x)
 	l2_loss = tf.reduce_mean(tf.square(labels - model))
@@ -201,6 +201,7 @@ def enhance(x, path, save_path):
 			print('Failed to load checkpoint.')
 
 		if os.path.isfile(path):
+			print('Upscaling image', path, '...')
 			img = cv.imread(path)
 			h, w = img.shape[0], img.shape[1]
 			num_hor = math.ceil((h * multiplier - size_input) / 21)
@@ -239,16 +240,60 @@ def enhance(x, path, save_path):
 			# cv.imshow('super-resolution', result)
 			# cv.waitKey(0)
 			# save_path = os.path.join('./result', 'test_raw.png')
-			save_path = os.path.join(save_path, os.path.basename(path))
+			save_path = os.path.join(save_dir, os.path.basename(path))
 			scipy.misc.imsave(save_path, result)
 			print('Finished upscaling image', path)
 
-		# elif os.path.isdir(path):
+		elif os.path.isdir(path):
+			for root, dirs, files in os.walk(path):
+				for im_name in files:
+					img_path = os.path.join(path, im_name)
+					print('Upscaling image', img_path, '...')
+					img = cv.imread(img_path)
+					h, w = img.shape[0], img.shape[1]
+					num_hor = math.ceil((h * multiplier - size_input) / 21)
+					num_ver = math.ceil((w * multiplier - size_input) / 21)
 
+					test_data, test_color = prepare_raw(img_path)
+
+					# Generate super-resolutioned image.
+					conv_out = model.eval({images: test_data})	# Result in patch of size 21x21.
+					height, width = conv_out.shape[1], conv_out.shape[2]
+					# print('conv_out has shape:', conv_out.shape)
+					result = np.zeros([height * num_hor, width * num_ver, 3])
+					# original = np.zeros([height * num_hor, width * num_ver, 1])
+					# print('result has shape:', result.shape)
+					# print('num_hor =', num_hor, 'num_ver =', num_ver)
+					i, j = 0, 0
+					for idx, image in enumerate(conv_out):
+						j = idx // num_ver
+						i = idx - j * num_ver
+						# print('idx =', idx, 'i =', i, 'j =', j)
+						result[j * height : j * height + height, i * width : i * width + width, 0] = image.squeeze()
+					# result = result.squeeze()
+					result = revert(result)
+
+					print('Filling color information...')
+					i, j = 0, 0
+					for idx, image in enumerate(test_color):
+						j = idx // num_ver
+						i = idx - j * num_ver
+						result[j * height : j * height + height, i * width : i * width + width, 1 : 3] = image
+					
+					result = cv.cvtColor(result, cv.COLOR_YCrCb2RGB)
+					# cv.imshow('super-resolution', result)
+					# cv.waitKey(0)
+					# save_path = os.path.join('./result', 'test_raw.png')
+					save_path = os.path.join(save_dir, os.path.basename(img_path))
+					scipy.misc.imsave(save_path, result)
+					print('Finished upscaling image', img_path)
+			print('Finished upscaling all images.')
+		else:
+			print(' [*] Invalid input path.')
 
 
 # Calculate num_ver and num_hor.
-img_path = './Test/Set5/woman_GT.bmp'
+img_path = './Test/Set14/baboon.bmp'
 # save_path = os.path.join('./result', 'test_raw.png')
 save_path = './result/'
 # img = cv.imread(img_path)
@@ -264,22 +309,22 @@ save_path = './result/'
 enhance(images, img_path, save_path)
 
 
-def upscale_batch(input_dir, output_dir):
-	# Traverse the images in the input_dir.
-	print('input:', input_dir, 'output:', output_dir)
-	for root, dirs, files in os.walk(input_dir):
-		for im_name in files:
-			img_path = os.path.join(input_dir, im_name)
-			print('Upscaling image', img_path)
+# def upscale_batch(input_dir, output_dir):
+# 	# Traverse the images in the input_dir.
+# 	print('input:', input_dir, 'output:', output_dir)
+# 	for root, dirs, files in os.walk(input_dir):
+# 		for im_name in files:
+# 			img_path = os.path.join(input_dir, im_name)
+# 			print('Upscaling image', img_path)
 
-			# Calculate number of patch needed horizontally and vertically.
-			img = cv.imread(img_path)
-			h, w = img.shape[0], img.shape[1]
-			hor = math.ceil((h * multiplier - size_input) / 21)
-			ver = math.ceil((w * multiplier - size_input) / 21)
+# 			# Calculate number of patch needed horizontally and vertically.
+# 			img = cv.imread(img_path)
+# 			h, w = img.shape[0], img.shape[1]
+# 			hor = math.ceil((h * multiplier - size_input) / 21)
+# 			ver = math.ceil((w * multiplier - size_input) / 21)
 
-			save_path = os.path.join(output_dir, im_name)
-			enhance(images, ver, hor, img_path, save_path)
+# 			save_path = os.path.join(output_dir, im_name)
+# 			enhance(images, ver, hor, img_path, save_path)
 
 
 # input_dir = './Test/Set5/'
