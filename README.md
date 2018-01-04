@@ -9,7 +9,7 @@ Tensorflow implementation of super-resolution using CNN.
  * Opencv 3
  * h5py
 
-## Usage:
+## Usage
 
 To train, uncomment the scripts in the bottom in net.py.
 Then type `python net.py`
@@ -17,7 +17,7 @@ Then type `python net.py`
 To test, set proper img_path and save_path in the use_SRCNN.py.
 Then type `python use_SRCNN.py`
 
-## Result
+## Results
 The following results are based on 45 hours of training on my i7 CPU.
 <br>
 Original image:<br>
