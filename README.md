@@ -28,7 +28,7 @@ SRCNN:<br>
 ![srcnn](https://github.com/Edwardlzy/SRCNN/blob/master/result/head_test.png)
 <br><br>
 
-We can also upscale any image to this model to get a higher-resolutioned version with interpolated details:<br>
+We can also feed any image to this model to get an upscaled version with interpolated details:<br>
 Original image:<br>
 ![lenna](https://github.com/Edwardlzy/SRCNN/blob/master/result/lenna.bmp)<br>
 SRCNN:<br>
