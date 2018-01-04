@@ -21,6 +21,7 @@ batch_size = 128
 num_training = 21712
 num_testing = 1113
 ckpt_dir = './checkpoint/'
+multiplier = 2
 
 # Read and prepare the test image for SRCNN.
 def prepare_data(path):
@@ -72,7 +73,6 @@ def prepare_raw(path):
 	data = []
 	color = []
 	padding = abs(size_input - size_label) / 2
-	# scale = 3
 	stride = 21
 	# Read in image and convert to ycrcb color space.
 	img = cv.imread(path)
@@ -84,8 +84,8 @@ def prepare_raw(path):
 	# size = im_label.shape
 	size = img.shape
 	# im_label = scipy.misc.imresize(im_label, [size[0] * 3, size[1] * 3], interp='bicubic')
-	img_temp = scipy.misc.imresize(img, [size[0] * 3, size[1] * 3], interp='bicubic')
-	color_temp = scipy.misc.imresize(im, [size[0] * 3, size[1] * 3], interp='bicubic')
+	img_temp = scipy.misc.imresize(img, [size[0] * multiplier, size[1] * multiplier], interp='bicubic')
+	color_temp = scipy.misc.imresize(im, [size[0] * multiplier, size[1] * multiplier], interp='bicubic')
 	# img_temp = scipy.ndimage.interpolation.zoom(img, 3.0, prefilter=False)
 	im_label = img_temp[:, :, 0]
 	im_color = color_temp[:, :, 1:3]
@@ -112,17 +112,17 @@ def prepare_raw(path):
 	# label = np.array(label)
 
 	# Write to HDF5 file.
-	savepath = os.path.join(os.getcwd(), 'checkpoint/test_raw_image.h5')
-	with h5py.File(savepath, 'w') as hf:
-		hf.create_dataset('data', data=data)
-		hf.create_dataset('color', data=color)
+	# savepath = os.path.join(os.getcwd(), 'checkpoint/test_raw_image.h5')
+	# with h5py.File(savepath, 'w') as hf:
+	# 	hf.create_dataset('data', data=data)
+	# 	hf.create_dataset('color', data=color)
 		# hf.create_dataset('label', data=label)
 
-	return savepath
+	return data, color
 
 
 # Use the trained model to generate super-resolutioned image.
-def generate_SR(x, num_ver, num_hor, path):
+def generate_SR(x, num_ver, num_hor, path, save_path):
 	# Initialization.
 	model = SRCNN(x)
 	l2_loss = tf.reduce_mean(tf.square(labels - model))
@@ -177,13 +177,13 @@ def generate_SR(x, num_ver, num_hor, path):
 		cv.waitKey(0)
 		cv.imshow('super-resolution', result)
 		cv.waitKey(0)
-		save_path = os.path.join('./result', 'test.png')
+		# save_path = os.path.join('./result', 'test.png')
 		scipy.misc.imsave(save_path, result)
-		scipy.misc.imsave('./result/original.png', original)
+		# scipy.misc.imsave('./result/original.png', original)
 		scipy.misc.imsave('./result/bicubic.png', bicubic)
 
 # Directly feed the original image to SRCNN.
-def enhance(x, num_ver, num_hor, path):
+def enhance(x, path, save_path):
 	# Initialization.
 	model = SRCNN(x)
 	l2_loss = tf.reduce_mean(tf.square(labels - model))
@@ -200,52 +200,91 @@ def enhance(x, num_ver, num_hor, path):
 		else:
 			print('Failed to load checkpoint.')
 
+		if os.path.isfile(path):
+			img = cv.imread(path)
+			h, w = img.shape[0], img.shape[1]
+			num_hor = math.ceil((h * multiplier - size_input) / 21)
+			num_ver = math.ceil((w * multiplier - size_input) / 21)
 
-		data_path = prepare_raw(path)
-		with h5py.File(data_path, 'r') as hf:
-			test_data = np.array(hf.get('data'))
-			test_color = np.array(hf.get('color'))
+			test_data, test_color = prepare_raw(path)
+			# with h5py.File(data_path, 'r') as hf:
+			# 	test_data = np.array(hf.get('data'))
+			# 	test_color = np.array(hf.get('color'))
 
-		# Generate super-resolutioned image.
-		conv_out = model.eval({images: test_data})	# Result in patch of size 21x21.
-		height, width = conv_out.shape[1], conv_out.shape[2]
-		print('conv_out has shape:', conv_out.shape)
-		result = np.zeros([height * num_hor, width * num_ver, 3])
-		# original = np.zeros([height * num_hor, width * num_ver, 1])
-		print('result has shape:', result.shape)
-		print('num_hor =', num_hor, 'num_ver =', num_ver)
-		i, j = 0, 0
-		for idx, image in enumerate(conv_out):
-			j = idx // num_ver
-			i = idx - j * num_ver
-			print('idx =', idx, 'i =', i, 'j =', j)
-			result[j * height : j * height + height, i * width : i * width + width, 0] = image.squeeze()
-		# result = result.squeeze()
-		result = revert(result)
+			# Generate super-resolutioned image.
+			conv_out = model.eval({images: test_data})	# Result in patch of size 21x21.
+			height, width = conv_out.shape[1], conv_out.shape[2]
+			# print('conv_out has shape:', conv_out.shape)
+			result = np.zeros([height * num_hor, width * num_ver, 3])
+			# original = np.zeros([height * num_hor, width * num_ver, 1])
+			# print('result has shape:', result.shape)
+			# print('num_hor =', num_hor, 'num_ver =', num_ver)
+			i, j = 0, 0
+			for idx, image in enumerate(conv_out):
+				j = idx // num_ver
+				i = idx - j * num_ver
+				# print('idx =', idx, 'i =', i, 'j =', j)
+				result[j * height : j * height + height, i * width : i * width + width, 0] = image.squeeze()
+			# result = result.squeeze()
+			result = revert(result)
 
-		i, j = 0, 0
-		for idx, image in enumerate(test_color):
-			j = idx // num_ver
-			i = idx - j * num_ver
-			result[j * height : j * height + height, i * width : i * width + width, 1 : 3] = image
-		
-		result = cv.cvtColor(result, cv.COLOR_YCrCb2RGB)
-		cv.imshow('super-resolution', result)
-		cv.waitKey(0)
-		save_path = os.path.join('./result', 'test_raw.png')
-		scipy.misc.imsave(save_path, result)
+			print('Filling color information...')
+			i, j = 0, 0
+			for idx, image in enumerate(test_color):
+				j = idx // num_ver
+				i = idx - j * num_ver
+				result[j * height : j * height + height, i * width : i * width + width, 1 : 3] = image
+			
+			result = cv.cvtColor(result, cv.COLOR_YCrCb2RGB)
+			# cv.imshow('super-resolution', result)
+			# cv.waitKey(0)
+			# save_path = os.path.join('./result', 'test_raw.png')
+			save_path = os.path.join(save_path, os.path.basename(path))
+			scipy.misc.imsave(save_path, result)
+			print('Finished upscaling image', path)
+
+		# elif os.path.isdir(path):
+
 
 
 # Calculate num_ver and num_hor.
-img_path = './Test/Set14/bridge.bmp'
-img = cv.imread(img_path)
-print('original size =', img.shape)
-h, w = img.shape[0], img.shape[1]
-num_hor = math.ceil((h - size_input) / 21)
-num_ver = math.ceil((w - size_input) / 21)
+img_path = './Test/Set5/woman_GT.bmp'
+# save_path = os.path.join('./result', 'test_raw.png')
+save_path = './result/'
+# img = cv.imread(img_path)
+# print('original size =', img.shape)
+# h, w = img.shape[0], img.shape[1]
+# num_hor = math.ceil((h - size_input) / 21)
+# num_ver = math.ceil((w - size_input) / 21)
 
-enh_num_hor = math.ceil((h * 3 - size_input) / 21)
-enh_num_ver = math.ceil((w * 3 - size_input) / 21)
+# enh_num_hor = math.ceil((h * multiplier - size_input) / 21)
+# enh_num_ver = math.ceil((w * multiplier - size_input) / 21)
 
-generate_SR(images, num_ver, num_hor, img_path)
-# enhance(images, enh_num_ver, enh_num_hor, img_path)
+# generate_SR(images, num_ver, num_hor, img_path, save_path)
+enhance(images, img_path, save_path)
+
+
+def upscale_batch(input_dir, output_dir):
+	# Traverse the images in the input_dir.
+	print('input:', input_dir, 'output:', output_dir)
+	for root, dirs, files in os.walk(input_dir):
+		for im_name in files:
+			img_path = os.path.join(input_dir, im_name)
+			print('Upscaling image', img_path)
+
+			# Calculate number of patch needed horizontally and vertically.
+			img = cv.imread(img_path)
+			h, w = img.shape[0], img.shape[1]
+			hor = math.ceil((h * multiplier - size_input) / 21)
+			ver = math.ceil((w * multiplier - size_input) / 21)
+
+			save_path = os.path.join(output_dir, im_name)
+			enhance(images, ver, hor, img_path, save_path)
+
+
+# input_dir = './Test/Set5/'
+# output_dir = './result/batch_result/'
+# upscale_batch(input_dir, output_dir)
+
+
+
