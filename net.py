@@ -88,6 +88,11 @@ def train_SRCNN(x):
 		counter = 0
 		saver = tf.train.Saver()
 
+		if load_ckpt(sess, ckpt_dir, saver):
+			print('Successfully loaded checkpoint.')
+		else:
+			print('Failed to load checkpoint.')
+
 		# Training
 		for epoch in range(num_epoch):
 			epoch_loss = 0
