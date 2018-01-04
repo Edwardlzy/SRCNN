@@ -20,11 +20,11 @@ Then type `python use_SRCNN.py`
 ## Result
 The following results are based on 45 hours of training on my i7 CPU.
 <br>
-Original image:
+Original image:<br>
 ![original](https://github.com/Edwardlzy/SRCNN/blob/master/result/head_original.png)<br>
-Bicubic interpolation:
+Bicubic interpolation:<br>
 ![bicubic](https://github.com/Edwardlzy/SRCNN/blob/master/result/head_bicubic.png)<br>
-SRCNN:
+SRCNN:<br>
 ![srcnn](https://github.com/Edwardlzy/SRCNN/blob/master/result/head_test.png)
 
   
