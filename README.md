@@ -1,5 +1,14 @@
 # SRCNN
-Implementation of super-resolution using CNN.
+Tensorflow implementation of super-resolution using CNN.
+
+## Prerequisites
+ * Python 3
+ * Tensorflow
+ * Numpy
+ * Scipy
+ * Opencv 3
+ * h5py
+
 
 Usage:
 
@@ -12,4 +21,4 @@ Usage:
   
 Reference:
 
-Dong, C., Loy, C.C., He, K., Tang, X.: Learning a Deep Convolutional Network for Image Super-Resolution.
+[Dong, C., Loy, C.C., He, K., Tang, X.: Learning a Deep Convolutional Network for Image Super-Resolution](http://mmlab.ie.cuhk.edu.hk/projects/SRCNN.html).
