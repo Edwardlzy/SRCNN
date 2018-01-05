@@ -14,7 +14,7 @@ Tensorflow implementation of super-resolution using CNN.
 To train, uncomment the scripts in the bottom in net.py.
 Then type `python net.py`
 <br>
-To test, set proper img_path and save_path in the use_SRCNN.py.
+To test, set proper img_path, save_path and upscaling factor (multiplier) in the use_SRCNN.py.
 Then type `python use_SRCNN.py`
 
 ## Results
