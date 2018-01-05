@@ -29,7 +29,6 @@ def prepare_data(path):
 	data = []
 	label = []
 	padding = abs(size_input - size_label) / 2
-	scale = 3
 	stride = 21
 	# Read in image and convert to ycrcb color space.
 	img = cv.imread(path)
@@ -37,12 +36,15 @@ def prepare_data(path):
 	img = im2double(img) # Only use the luminance value.
 
 	# Create groundtruth and baseline image.
-	im_label = modcrop(img)
+	im_label = modcrop(img, scale=multiplier)
 	size = im_label.shape
 	h = size[0]
 	w = size[1]
-	im_temp = scipy.misc.imresize(im_label, 1/scale, interp='bicubic')
-	im_input = scipy.misc.imresize(im_temp, size, interp='bicubic')
+	im_temp = scipy.misc.imresize(im_label, 1/multiplier, interp='bicubic')
+	im_input = scipy.misc.imresize(im_temp, multiplier * 1.0, interp='bicubic')
+
+	print('im_temp shape:', im_temp.shape)
+	print('im_input shape:', im_input.shape)
 
 	# Generate subimages.
 	for x in range(0, h - size_input, stride):
@@ -60,12 +62,12 @@ def prepare_data(path):
 	label = np.array(label)
 
 	# Write to HDF5 file.
-	savepath = os.path.join(os.getcwd(), 'checkpoint/test_image.h5')
-	with h5py.File(savepath, 'w') as hf:
-		hf.create_dataset('data', data=data)
-		hf.create_dataset('label', data=label)
+	# savepath = os.path.join(os.getcwd(), 'checkpoint/test_image.h5')
+	# with h5py.File(savepath, 'w') as hf:
+	# 	hf.create_dataset('data', data=data)
+	# 	hf.create_dataset('label', data=label)
 
-	return savepath
+	return data, label
 
 # Prepare original data without blurring.
 def prepare_raw(path):
@@ -122,7 +124,7 @@ def prepare_raw(path):
 
 
 # Use the trained model to generate super-resolutioned image.
-def generate_SR(x, num_ver, num_hor, path, save_path):
+def generate_SR(x, path, save_dir):
 	# Initialization.
 	model = SRCNN(x)
 	l2_loss = tf.reduce_mean(tf.square(labels - model))
@@ -139,48 +141,106 @@ def generate_SR(x, num_ver, num_hor, path, save_path):
 		else:
 			print('Failed to load checkpoint.')
 
-		test_data, test_label = load_data(prepare_data(path))
-		print('test_data has shape:', test_data.shape, 'label has shape:', test_label.shape)
+		if os.path.isfile(path):
+			img = cv.imread(path)
+			h, w = img.shape[0], img.shape[1]
+			num_hor = math.ceil((h - size_input) / 21)
+			num_ver = math.ceil((w - size_input) / 21)
 
-		# Generate super-resolutioned image.
-		conv_out = model.eval({images: test_data, labels: test_label})	# Result in patch of size 21x21.
-		height, width = conv_out.shape[1], conv_out.shape[2]
-		print('conv_out has shape:', conv_out.shape)
-		result = np.zeros([height * num_hor, width * num_ver, 1])
-		original = np.zeros([height * num_hor, width * num_ver, 1])
-		print('result has shape:', result.shape)
-		print('num_hor =', num_hor, 'num_ver =', num_ver)
-		i, j = 0, 0
-		for idx, image in enumerate(conv_out):
-			j = idx // num_ver
-			i = idx - j * num_ver
-			print('idx =', idx, 'i =', i, 'j =', j)
-			result[j * height : j * height + height, i * width : i * width + width, :] = image
-		result = result.squeeze()
-		result = revert(result)
+			test_data, test_label = prepare_data(path)
+			print('test_data has shape:', test_data.shape, 'label has shape:', test_label.shape)
 
-		i, j = 0, 0
-		for idx, image in enumerate(test_label):
-			j = idx // num_ver
-			i = idx - j * num_ver
-			original[j * height : j * height + height, i * width : i * width + width, :] = image
-		original = original.squeeze()
+			# Generate super-resolutioned image.
+			conv_out = model.eval({images: test_data})	# Result in patch of size 21x21.
+			height, width = conv_out.shape[1], conv_out.shape[2]
+			# print('conv_out has shape:', conv_out.shape)
+			result = np.zeros([height * num_hor, width * num_ver, 1])
+			original = np.zeros([height * num_hor, width * num_ver, 1])
+			# print('result has shape:', result.shape)
+			# print('num_hor =', num_hor, 'num_ver =', num_ver)
+			i, j = 0, 0
+			for idx, image in enumerate(conv_out):
+				j = idx // num_ver
+				i = idx - j * num_ver
+				print('idx =', idx, 'i =', i, 'j =', j)
+				result[j * height : j * height + height, i * width : i * width + width, :] = image
+			result = result.squeeze()
+			result = revert(result)
 
-		size_original = original.shape
-		bicubic = scipy.misc.imresize(original, 1/3, interp='bicubic')
-		bicubic = scipy.misc.imresize(bicubic, size_original, interp='bicubic')
+			i, j = 0, 0
+			for idx, image in enumerate(test_label):
+				j = idx // num_ver
+				i = idx - j * num_ver
+				original[j * height : j * height + height, i * width : i * width + width, :] = image
+			original = original.squeeze()
 
-		# Display and save the image.
-		cv.imshow('original', original)
-		cv.waitKey(0)
-		cv.imshow('bicubic', bicubic)
-		cv.waitKey(0)
-		cv.imshow('super-resolution', result)
-		cv.waitKey(0)
-		# save_path = os.path.join('./result', 'test.png')
-		scipy.misc.imsave(save_path, result)
-		# scipy.misc.imsave('./result/original.png', original)
-		scipy.misc.imsave('./result/bicubic.png', bicubic)
+			size_original = original.shape
+			bicubic = scipy.misc.imresize(original, 1/3, interp='bicubic')
+			bicubic = scipy.misc.imresize(bicubic, size_original, interp='bicubic')
+
+			# Display and save the image.
+			# cv.imshow('original', original)
+			# cv.waitKey(0)
+			# cv.imshow('bicubic', bicubic)
+			# cv.waitKey(0)
+			# cv.imshow('super-resolution', result)
+			# cv.waitKey(0)
+			# save_path = os.path.join('./result', 'test.png')
+			save_path = os.path.join(save_dir, os.path.basename(path))
+			scipy.misc.imsave(save_path, result)
+			# scipy.misc.imsave('./result/original.png', original)
+			scipy.misc.imsave('./result/bicubic.png', bicubic)
+		elif os.path.isdir(path):
+			for root, dirs, files in os.walk(path):
+				for im_name in files:
+					img_path = os.path.join(path, im_name)
+					print('Testing on image', img_path)
+					img = cv.imread(img_path)
+					h, w = img.shape[0], img.shape[1]
+					num_hor = math.ceil((h - size_input) / 21)
+					num_ver = math.ceil((w - size_input) / 21)
+
+					test_data, test_label = prepare_data(img_path)
+
+					# Generate super-resolutioned image.
+					conv_out = model.eval({images: test_data})	# Result in patch of size 21x21.
+					height, width = conv_out.shape[1], conv_out.shape[2]
+					# print('conv_out has shape:', conv_out.shape)
+					result = np.zeros([height * num_hor, width * num_ver, 1])
+					original = np.zeros([height * num_hor, width * num_ver, 1])
+					# print('result has shape:', result.shape)
+					# print('num_hor =', num_hor, 'num_ver =', num_ver)
+					i, j = 0, 0
+					for idx, image in enumerate(conv_out):
+						j = idx // num_ver
+						i = idx - j * num_ver
+						# print('idx =', idx, 'i =', i, 'j =', j)
+						result[j * height : j * height + height, i * width : i * width + width, :] = image
+					result = result.squeeze()
+					result = revert(result)
+
+					i, j = 0, 0
+					for idx, image in enumerate(test_label):
+						j = idx // num_ver
+						i = idx - j * num_ver
+						original[j * height : j * height + height, i * width : i * width + width, :] = image
+					original = original.squeeze()
+
+					size_original = original.shape
+					bicubic = scipy.misc.imresize(original, 1/3, interp='bicubic')
+					bicubic = scipy.misc.imresize(bicubic, size_original, interp='bicubic')
+
+					save_path = os.path.join(save_dir, os.path.basename(img_path))
+					scipy.misc.imsave(save_path, result)
+					save_path = save_dir + 'bicubic_' + os.path.basename(img_path)
+					scipy.misc.imsave(save_path, bicubic)
+
+					print('Finished writing', os.path.basename(img_path))
+
+		else:
+			print(' [*] Invalid input path.')
+
+
 
 # Directly feed the original image to SRCNN.
 def enhance(x, path, save_dir):
@@ -293,9 +353,9 @@ def enhance(x, path, save_dir):
 
 
 # Calculate num_ver and num_hor.
-img_path = './Test/Set14/baboon.bmp'
+img_path = './Test/Set5/'
 # save_path = os.path.join('./result', 'test_raw.png')
-save_path = './result/'
+save_path = './result/Set5_test/'
 # img = cv.imread(img_path)
 # print('original size =', img.shape)
 # h, w = img.shape[0], img.shape[1]
@@ -305,8 +365,8 @@ save_path = './result/'
 # enh_num_hor = math.ceil((h * multiplier - size_input) / 21)
 # enh_num_ver = math.ceil((w * multiplier - size_input) / 21)
 
-# generate_SR(images, num_ver, num_hor, img_path, save_path)
-enhance(images, img_path, save_path)
+generate_SR(images, img_path, save_path)
+# enhance(images, img_path, save_path)
 
 
 # def upscale_batch(input_dir, output_dir):
