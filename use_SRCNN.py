@@ -13,8 +13,8 @@ import math
 # Initialization
 size_input = 33
 size_label = 21
-images = tf.placeholder(tf.float32, [None, size_input, size_input, 1], name='images')
-labels = tf.placeholder(tf.float32, [None, size_label, size_label, 1], name='labels')
+# images = tf.placeholder(tf.float32, [1536, 1536], name='images')
+# labels = tf.placeholder(tf.float32, [None, size_label, size_label, 1], name='labels')
 learning_rate = 1e-4
 num_epoch = 15000
 batch_size = 128
@@ -91,26 +91,30 @@ def prepare_raw(path):
 	# img_temp = scipy.ndimage.interpolation.zoom(img, 3.0, prefilter=False)
 	im_label = img_temp[:, :, 0]
 	im_color = color_temp[:, :, 1:3]
-	h = im_label.shape[0]
-	w = im_label.shape[1]
+
+	# h = im_label.shape[0]
+	# w = im_label.shape[1]
 
 	# Generate subimages.
-	for x in range(0, h - size_input, stride):
-		for y in range(0, w - size_input, stride):
-			subim_input = im_label[x : x + size_input, y : y + size_input]
-			subim_color = im_color[int(x + padding) : int(x + padding + size_label), int(y + padding) : int(y + padding + size_label), :]
-			# subim_label = im_label[int(x + padding) : int(x + padding + size_label), int(y + padding) : int(y + padding + size_label)]
+	# for x in range(0, h - size_input, stride):
+	# 	for y in range(0, w - size_input, stride):
+	# 		subim_input = im_label[x : x + size_input, y : y + size_input]
+	# 		subim_color = im_color[int(x + padding) : int(x + padding + size_label), int(y + padding) : int(y + padding + size_label), :]
+	# 		# subim_label = im_label[int(x + padding) : int(x + padding + size_label), int(y + padding) : int(y + padding + size_label)]
 			
-			subim_input = subim_input.reshape([size_input, size_input, 1])
-			subim_color = subim_color.reshape([size_label, size_label, 2])
-			# subim_label = subim_label.reshape([size_label, size_label, 1])
+	# 		subim_input = subim_input.reshape([size_input, size_input, 1])
+	# 		subim_color = subim_color.reshape([size_label, size_label, 2])
+	# 		# subim_label = subim_label.reshape([size_label, size_label, 1])
 
-			data.append(subim_input)
-			color.append(subim_color)
-			# label.append(subim_label)
+	# 		data.append(subim_input)
+	# 		color.append(subim_color)
+	# 		# label.append(subim_label)
 
-	data = np.array(data)
-	color = np.array(color)
+	# data = np.array(data)
+	# color = np.array(color)
+	data = np.array(im_label).reshape([1, img.shape[0] * multiplier, img.shape[1] * multiplier, 1])
+	color = np.array(im_color)
+
 	# label = np.array(label)
 
 	# Write to HDF5 file.
@@ -243,107 +247,79 @@ def generate_SR(x, path, save_dir):
 
 
 # Directly feed the original image to SRCNN.
-def enhance(x, path, save_dir):
+def enhance(path, save_dir):
 	# Initialization.
-	model = SRCNN(x)
-	l2_loss = tf.reduce_mean(tf.square(labels - model))
-	optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(l2_loss)
+	# model = SRCNN(x)
 
+	# with tf.Session() as sess: # Delete this later
+		# sess.run(tf.global_variables_initializer())
+		# print('Generating super-resolutioned image...')
+
+		# # Load the saved checkpoint.
+		# saver = tf.train.Saver()
+		# if load_ckpt(sess, ckpt_dir, saver):
+		# 	print('Successfully loaded checkpoint.')
+		# else:
+		# 	print('Failed to load checkpoint.')
+	images = tf.placeholder(tf.float32, [None, None, None, 1], name='images')
+	model = SRCNN(images)
 	with tf.Session() as sess:
 		sess.run(tf.global_variables_initializer())
-		print('Generating super-resolutioned image...')
-
 		# Load the saved checkpoint.
 		saver = tf.train.Saver()
-		if load_ckpt(sess, ckpt_dir, saver):
+		checkpoint_dir = ckpt_dir
+		if load_ckpt(sess, checkpoint_dir, saver):
 			print('Successfully loaded checkpoint.')
 		else:
 			print('Failed to load checkpoint.')
 
 		if os.path.isfile(path):
 			print('Upscaling image', path, '...')
-			img = cv.imread(path)
-			h, w = img.shape[0], img.shape[1]
-			num_hor = math.ceil((h * multiplier - size_input) / 21)
-			num_ver = math.ceil((w * multiplier - size_input) / 21)
-
 			test_data, test_color = prepare_raw(path)
-			# with h5py.File(data_path, 'r') as hf:
-			# 	test_data = np.array(hf.get('data'))
-			# 	test_color = np.array(hf.get('color'))
 
 			# Generate super-resolutioned image.
-			conv_out = model.eval({images: test_data})	# Result in patch of size 21x21.
-			height, width = conv_out.shape[1], conv_out.shape[2]
-			# print('conv_out has shape:', conv_out.shape)
-			result = np.zeros([height * num_hor, width * num_ver, 3])
-			# original = np.zeros([height * num_hor, width * num_ver, 1])
-			# print('result has shape:', result.shape)
-			# print('num_hor =', num_hor, 'num_ver =', num_ver)
-			i, j = 0, 0
-			for idx, image in enumerate(conv_out):
-				j = idx // num_ver
-				i = idx - j * num_ver
-				# print('idx =', idx, 'i =', i, 'j =', j)
-				result[j * height : j * height + height, i * width : i * width + width, 0] = image.squeeze()
-			# result = result.squeeze()
-			result = revert(result)
+			conv_out = model.eval({images: test_data})
+			conv_out = conv_out.squeeze()
 
-			print('Filling color information...')
-			i, j = 0, 0
-			for idx, image in enumerate(test_color):
-				j = idx // num_ver
-				i = idx - j * num_ver
-				result[j * height : j * height + height, i * width : i * width + width, 1 : 3] = image
-			
+			result_bw = revert(conv_out)
+			result = np.zeros([result_bw.shape[0], result_bw.shape[1], 3], dtype=np.uint8)
+			result[:, :, 0] = result_bw
+			result[:, :, 1:3] = test_color[6:-6, 6:-6, :]
 			result = cv.cvtColor(result, cv.COLOR_YCrCb2RGB)
-			# cv.imshow('super-resolution', result)
-			# cv.waitKey(0)
-			# save_path = os.path.join('./result', 'test_raw.png')
 			save_path = os.path.join(save_dir, os.path.basename(path))
 			scipy.misc.imsave(save_path, result)
+
+			# upscale_single_image(model, path, save_dir)
 			print('Finished upscaling image', path)
 
 		elif os.path.isdir(path):
 			for root, dirs, files in os.walk(path):
 				for im_name in files:
 					img_path = os.path.join(path, im_name)
-					print('Upscaling image', img_path, '...')
-					img = cv.imread(img_path)
-					h, w = img.shape[0], img.shape[1]
-					num_hor = math.ceil((h * multiplier - size_input) / 21)
-					num_ver = math.ceil((w * multiplier - size_input) / 21)
+					# img = cv.imread(img_path)
+					# images = tf.placeholder(tf.float32, [None, multiplier * img.shape[0], multiplier * img.shape[1], 1], name='images')
+					# model = SRCNN(images)
+					# sess.run(tf.global_variables_initializer())
+					# # Load the saved checkpoint.
+					# saver = tf.train.Saver()
+					# checkpoint_dir = ckpt_dir
+					# if load_ckpt(sess, checkpoint_dir, saver):
+					# 	print('Successfully loaded checkpoint.')
+					# else:
+					# 	print('Failed to load checkpoint.')
 
+					print('Upscaling image', img_path, '...')
 					test_data, test_color = prepare_raw(img_path)
 
 					# Generate super-resolutioned image.
-					conv_out = model.eval({images: test_data})	# Result in patch of size 21x21.
-					height, width = conv_out.shape[1], conv_out.shape[2]
-					# print('conv_out has shape:', conv_out.shape)
-					result = np.zeros([height * num_hor, width * num_ver, 3])
-					# original = np.zeros([height * num_hor, width * num_ver, 1])
-					# print('result has shape:', result.shape)
-					# print('num_hor =', num_hor, 'num_ver =', num_ver)
-					i, j = 0, 0
-					for idx, image in enumerate(conv_out):
-						j = idx // num_ver
-						i = idx - j * num_ver
-						# print('idx =', idx, 'i =', i, 'j =', j)
-						result[j * height : j * height + height, i * width : i * width + width, 0] = image.squeeze()
-					# result = result.squeeze()
-					result = revert(result)
+					conv_out = model.eval({images: test_data})
+					conv_out = conv_out.squeeze()
 
-					print('Filling color information...')
-					i, j = 0, 0
-					for idx, image in enumerate(test_color):
-						j = idx // num_ver
-						i = idx - j * num_ver
-						result[j * height : j * height + height, i * width : i * width + width, 1 : 3] = image
-					
+					result_bw = revert(conv_out)
+					result = np.zeros([result_bw.shape[0], result_bw.shape[1], 3], dtype=np.uint8)
+					result[:, :, 0] = result_bw
+					result[:, :, 1:3] = test_color[6:-6, 6:-6, :]
 					result = cv.cvtColor(result, cv.COLOR_YCrCb2RGB)
-					# cv.imshow('super-resolution', result)
-					# cv.waitKey(0)
-					# save_path = os.path.join('./result', 'test_raw.png')
 					save_path = os.path.join(save_dir, os.path.basename(img_path))
 					scipy.misc.imsave(save_path, result)
 					print('Finished upscaling image', img_path)
@@ -351,12 +327,12 @@ def enhance(x, path, save_dir):
 		else:
 			print(' [*] Invalid input path.')
 
-
 # Calculate num_ver and num_hor.
 img_path = './Test/Set5/'
 # save_path = os.path.join('./result', 'test_raw.png')
-save_path = './result/Set5_test/'
+save_path = './result/'
 # img = cv.imread(img_path)
+# images = tf.placeholder(tf.float32, [None, multiplier * img.shape[0], multiplier * img.shape[1], 1], name='images')
 # print('original size =', img.shape)
 # h, w = img.shape[0], img.shape[1]
 # num_hor = math.ceil((h - size_input) / 21)
@@ -365,8 +341,8 @@ save_path = './result/Set5_test/'
 # enh_num_hor = math.ceil((h * multiplier - size_input) / 21)
 # enh_num_ver = math.ceil((w * multiplier - size_input) / 21)
 
-generate_SR(images, img_path, save_path)
-# enhance(images, img_path, save_path)
+# generate_SR(images, img_path, save_path)
+enhance(img_path, save_path)
 
 
 # def upscale_batch(input_dir, output_dir):
