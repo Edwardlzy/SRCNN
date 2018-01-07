@@ -25,6 +25,7 @@ def im2double(im):
 def revert(im):
 	im = im * 255
 	im[im > 255] = 255
+	im[im < 0] = 0
 	return im.astype(np.uint8)
 
 def revert16(im):
@@ -42,6 +43,12 @@ def modcrop(image, scale=3):
 		size = image.shape[0:2]
 		size -= np.mod(size, scale)
 		image = image[0:size[0], 0:size[1], 0]
+	return image
+
+def modcrop_color(image, scale=3):
+	size = image.shape[0:2]
+	size -= np.mod(size, scale)
+	image = image[0:size[0], 0:size[1], :]
 	return image
 
 # Load and preprocess the training images.

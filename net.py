@@ -31,11 +31,13 @@ def load_ckpt(sess, checkpoint_dir, saver):
 	print(" [*] Reading checkpoints...")
 	model_dir = "%s_%s" % ("srcnn", size_label)
 	checkpoint_dir = os.path.join(checkpoint_dir, model_dir)
+	print('checkpoint_dir is', checkpoint_dir)
 
 	# Require only one checkpoint in the directory.
 	ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
 	if ckpt and ckpt.model_checkpoint_path:
 	    ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
+	    print('Restoring from', os.path.join(checkpoint_dir, ckpt_name))
 	    saver.restore(sess, os.path.join(checkpoint_dir, ckpt_name))
 	    return True
 	else:
@@ -54,7 +56,8 @@ def save_ckpt(sess, step, saver):
 
 # Customized conv2d as described in the paper to make the code more readable.
 def conv2d(x, W):
-	return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='VALID')
+	# return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='VALID')
+	return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
 
 # Define the computation graph of SRCNN.
 def SRCNN(x):
