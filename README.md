@@ -20,12 +20,10 @@ Then type `python use_SRCNN.py`
 ## Results
 The following results are based on 45 hours of training on my i7 CPU.
 <br>
-Original image:<br>
-![original](https://github.com/Edwardlzy/SRCNN/blob/master/result/head_original.png)<br>
 Bicubic interpolation:<br>
-![bicubic](https://github.com/Edwardlzy/SRCNN/blob/master/result/head_bicubic.png)<br>
+![bicubic](https://github.com/Edwardlzy/SRCNN/blob/master/Set5_result/bicubic_baby_GT.bmp)<br>
 SRCNN:<br>
-![srcnn](https://github.com/Edwardlzy/SRCNN/blob/master/result/head_test.png)
+![srcnn](https://github.com/Edwardlzy/SRCNN/blob/master/Set5_result/baby_GT.bmp)
 <br><br>
 
 We can also feed any image to this model to get an upscaled version with interpolated details:<br>
