@@ -26,6 +26,13 @@ SRCNN:<br>
 ![srcnn](https://github.com/Edwardlzy/SRCNN/blob/master/Set5_result/baby_GT.bmp)
 <br><br>
 
+Bicubic interpolation:<br>
+![bicubic](https://github.com/Edwardlzy/SRCNN/blob/master/Set5_result/bicubic_butterfly_GT.bmp)<br>
+SRCNN:<br>
+![srcnn](https://github.com/Edwardlzy/SRCNN/blob/master/Set5_result/butterfly_GT.bmp)
+
+<br><br>
+
 We can also feed any image to this model to get an upscaled version with interpolated details:<br>
 Original image:<br>
 ![lenna](https://github.com/Edwardlzy/SRCNN/blob/master/result/lenna.bmp)<br>
