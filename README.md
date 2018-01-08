@@ -1,4 +1,4 @@
-# SRCNN
+# Image Super-Resolution Using Deep Convolutional Networks
 Tensorflow implementation of super-resolution using CNN.
 
 ## Prerequisites
