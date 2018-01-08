@@ -20,17 +20,25 @@ Then type `python use_SRCNN.py`
 ## Results
 The following results are based on 45 hours of training on my i7 CPU.
 <br>
-Bicubic interpolation:<br>
-![bicubic](https://github.com/Edwardlzy/SRCNN/blob/master/Set5_result/bicubic_baby_GT.bmp)<br>
-SRCNN:<br>
-![srcnn](https://github.com/Edwardlzy/SRCNN/blob/master/Set5_result/baby_GT.bmp)
-<br><br>
 
 Bicubic interpolation:<br>
 ![bicubic](https://github.com/Edwardlzy/SRCNN/blob/master/Set5_result/bicubic_butterfly_GT.bmp)<br>
 SRCNN:<br>
 ![srcnn](https://github.com/Edwardlzy/SRCNN/blob/master/Set5_result/butterfly_GT.bmp)
 
+<br><br>
+
+Bicubic interpolation:<br>
+![bicubic](https://github.com/Edwardlzy/SRCNN/blob/master/Set5_result/bicubic_head_GT.bmp)<br>
+SRCNN:<br>
+![srcnn](https://github.com/Edwardlzy/SRCNN/blob/master/Set5_result/head_GT.bmp)
+
+<br><br>
+
+Bicubic interpolation:<br>
+![bicubic](https://github.com/Edwardlzy/SRCNN/blob/master/Set5_result/bicubic_baby_GT.bmp)<br>
+SRCNN:<br>
+![srcnn](https://github.com/Edwardlzy/SRCNN/blob/master/Set5_result/baby_GT.bmp)
 <br><br>
 
 We can also feed any image to this model to get an upscaled version with interpolated details:<br>
